@@ -97,7 +97,7 @@ class DATImage:
 
             self.metadata['timestamp'] = convert_ad_timestamp(struct.unpack('<Q', f.read(8))[0])
             logging.info('\tTime Stamp:\t{}'.format(
-                  self.metadata['timestamp'].strftime("%Y-%m-%d %H:%M")))
+                  self.metadata['timestamp'].strftime("%Y-%m-%d %H:%M:%S")))
             self.metadata['mask_xshift'] = struct.unpack('<h', f.read(2))[0]
             self.metadata['mask_yshift'] = struct.unpack('<h', f.read(2))[0]
             self.metadata['usemask'] = f.read(1)
@@ -375,9 +375,9 @@ class DATImage:
         ax = plt.Axes(fig, [0., 0., 1., 1.])
         ax.set_axis_off()
         fig.add_axes(ax)
-        ax.imshow(im.data, cmap='gray',
-                  clim=(np.amin(im.data),
-                        np.amax(im.data)),
+        ax.imshow(self.data, cmap='gray',
+                  clim=(np.amin(self.data),
+                        np.amax(self.data)),
                         aspect='auto')
         plt.show()
         return fig, ax
@@ -385,8 +385,8 @@ class DATImage:
 
 if __name__ == '__main__':
 
-    logging.basicConfig(level=logging.INFO)
-    #logging.basicConfig(level=logging.WARNING)
+    #logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
     
     # for test purposes
     #im = DATImage('../testfiles/LEEM.dat')
@@ -395,6 +395,6 @@ if __name__ == '__main__':
     #im = DATImage('../testfiles/PED.dat')    
     #im.normalizeOnCCD()
     #im.filterInelasticBkg()
-    (fig, ax) = im.display_image()
+    #(fig, ax) = im.display_image()
 
 
