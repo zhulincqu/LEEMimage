@@ -59,6 +59,6 @@ if __name__ == '__main__':
     for file in listOfFiles:
         file_log = file[:-3]+'txt'
         im = DATImage(file)
-        extractMetaData(file_log, im.metadata, keys)
+        extractMetaData(file_log, im.metadata)
 
         
