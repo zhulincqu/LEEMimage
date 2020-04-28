@@ -196,13 +196,13 @@ class DATImage:
                     logging.info('\t{:>3}\t{:<18}\t{}'.format(
                         b, 'Image Title:', self.metadata['Image Title']))
                     offset = len(temp) + 1
-                    
+                # MCP screen    
                 elif b == 243:
                     self.metadata['MCPscreen'] = [struct.unpack('<f', img_header[position+1:position+5])[0], 'V']
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, 'MCPscreen:', self.metadata['MCPscreen'][0], self.metadata['MCPscreen'][1]))
                     offset = 4
-
+                # MCP channel plate
                 elif b == 244:
                     self.metadata['MCPchannelplate'] = [struct.unpack('<f', img_header[position+1:position+5])[0], 'V']
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
@@ -385,12 +385,12 @@ class DATImage:
 
 if __name__ == '__main__':
 
-    #logging.basicConfig(level=logging.INFO)
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(level=logging.WARNING)
     
     # for test purposes
-    #im = DATImage('../testfiles/LEEM.dat')
-    im = DATImage('../testfiles/LEED.dat')
+    im = DATImage(r'C:\Users\linzhu\Desktop\SWERIM\Sample Sigma Phase 1\Mirror 50um.dat')
+    #im = DATImage('../testfiles/LEED.dat')
     #im = DATImage('../testfiles/PES.dat')
     #im = DATImage('../testfiles/PED.dat')    
     #im.normalizeOnCCD()
