@@ -60,5 +60,3 @@ if __name__ == '__main__':
         file_log = file[:-3]+'txt'
         im = DATImage(file)
         extractMetaData(file_log, im.metadata)
-
-        
