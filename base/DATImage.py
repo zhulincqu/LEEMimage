@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Apr 22 15:33:38 2020
+Image module for Elmitec .dat format image file 
+from MAXPEEM of MAX IV Laboratory
 
-@author: linzhu
+Author: linzhu
+Email: lin.zhu@maxiv.lu.se
 """
 
 import struct
@@ -14,30 +17,46 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 class DATImage:
+    '''
+    Import Elmitec dat format file containning image and metadata.
+    Return an intance of DATImage class, which has two important attributes:
+    1. data: 2D np.array saves the image.
+    2. metadata: a dictionary saves the all metadata.
+    
+    Example:
+    im = DATImage('../testfiles/LEEM.dat')
+    im.data # show the 2D np.array image.
+    im.metadata # show the metadata in form of dictionary.
+    '''
 
-    def __init__(self, *args):
+    def __init__(self, filename, *args, **key_args):
 
-        if len(args) > 0:
-            self.filename = args[0]
-            self.metadata = {}
-            logging.info('---------------------------------------------------')
-            logging.info('FILE:\t{}'.format(self.filename))
-            logging.info('---------------------------------------------------')
-            self._load_file()
-            logging.info('---------------------------------------------------')
+        self.filename = filename
+        self.metadata = {}
+        logging.info('---------------------------------------------------')
+        logging.info('FILE:\t{}'.format(self.filename))
+        logging.info('---------------------------------------------------')
+        self._load_file() # open file and read the metadata.
+        logging.info('---------------------------------------------------')
 
     def _load_file(self):
-        """Read metadata and image data from file."""
+        '''
+        Read metadata and image data from file.
+        '''
 
         def convert_ad_timestamp(timestamp):
-            """Convert time stamp in windows time format to datetime object."""
+            '''
+            Convert time to datetime object.
+            '''
             epoch_start = datetime(year=1601, month=1, day=1)
             seconds_since_epoch = timestamp/10**7
             return epoch_start + timedelta(seconds=seconds_since_epoch)
 
-        def read_field(header, iterable, current_position):
-            """Read data fields formatted
-            name(str)-unit(ASCII digit)-0-value(float)."""
+        def read_field(header, current_position):
+            '''
+            Read data fields formatted
+            address-name(str)-unit(ASCII digit)-0-value(float).
+            '''
             units_dict = ('', 'V', 'mA', 'A', '°C', ' K', 'mV', 'pA', 'nA', '\xb5A')
             temp = header[current_position+1:].split(b'\x00')[0]
             name = temp[:-1].decode('cp1252')
@@ -50,8 +69,10 @@ class DATImage:
             offset = len(temp) + 5  # length of entire field
             return name, units_dict[unit_tag], val, offset
 
-        def read_varian(header, iterable, current_position):
-            """Read data fields for varian pressure gauges."""
+        def read_varian(header, current_position):
+            '''
+            Read data fields for varian pressure gauges.
+            '''
             temp_1 = header[current_position+1:].split(b'\x00')[0]
             temp_2 = header[current_position+1:].split(b'\x00')[1]
             str_1 = temp_1.decode('cp1252')  # Name
@@ -134,7 +155,7 @@ class DATImage:
                           141,11,160,150,151,153,154,156,157,152,155,173,174,
                           205,204,188,189,175,162,170,142,207,219,39,38]
 
-            #235: COL, 236:Gauge 3, 237:PCH, 106:MCH
+            # 235: COL, 236:Gauge 3, 237:PCH, 106:MCH
             gauge_tags = [106, 235, 236, 237] 
             for b in b_iter:
                 if sys.version_info[0] < 3:
@@ -149,12 +170,14 @@ class DATImage:
                     
                 # Data fields with standard format
                 elif b in known_tags:
-                    [fieldname, unit, value, offset] = read_field(img_header, b_iter, position)
+                    [fieldname, unit, value, offset] = read_field(img_header, position)
                     self.metadata[fieldname] = [value, unit]
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, fieldname+':', value, unit))
                         
                 # Camera Exposure and average images
+                # Average Images = 0 : No Averaging
+                # Average Images = 255 : Sliding Averaging
                 elif b == 104:
                     self.metadata['Camera Exposure'] = [struct.unpack('<f', img_header[position+1:position+5])[0], 's']
                     self.metadata['Average Images'] = img_header[position+5]
@@ -162,11 +185,13 @@ class DATImage:
                         b, 'Camera Exposure:',
                         self.metadata['Camera Exposure'][0],
                         self.metadata['Camera Exposure'][1]))
+                    
                     if self.metadata['Average Images'] == 0:
                         logging.info('\t{:>3}\t{:<18}\t{:d} {}'.format(
                             '', 'Average Images:',
                             self.metadata['Average Images'],
                             '\t=> No Averaging'))
+                        
                     elif self.metadata['Average Images'] == 255:
                         logging.info('\t{:>3}\t{:<18}\t{:d} {}'.format(
                             '', 'Average Images:',
@@ -186,7 +211,7 @@ class DATImage:
                 # Pressure Gauges
                 elif b in gauge_tags:
                     [pressure_gauge, unit, pressure, offset] = \
-                        read_varian(img_header, b_iter, position)
+                        read_varian(img_header, position)
                     self.metadata[pressure_gauge] = [pressure, unit]
                     
                 # Image Title
@@ -196,12 +221,14 @@ class DATImage:
                     logging.info('\t{:>3}\t{:<18}\t{}'.format(
                         b, 'Image Title:', self.metadata['Image Title']))
                     offset = len(temp) + 1
+                    
                 # MCP screen    
                 elif b == 243:
                     self.metadata['MCPscreen'] = [struct.unpack('<f', img_header[position+1:position+5])[0], 'V']
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, 'MCPscreen:', self.metadata['MCPscreen'][0], self.metadata['MCPscreen'][1]))
                     offset = 4
+                    
                 # MCP channel plate
                 elif b == 244:
                     self.metadata['MCPchannelplate'] = [struct.unpack('<f', img_header[position+1:position+5])[0], 'V']
@@ -236,17 +263,20 @@ class DATImage:
                     fov_str = temp.decode('cp1252')
                     self.metadata['FOV cal. factor'] = \
                         float(struct.unpack('<f', img_header[position+len(temp)+2:position+len(temp)+6])[0])
+                        
                     # for LEED images
                     if fov_str[0:4] == 'LEED':
                         self.metadata['LEED'] = True
                         self.metadata['FOV'] = None
                         logging.info('\t{:>3}\t{:<18}\t{}'.format(
                             b, 'Field Of View:', 'LEED'))
+                            
                     # for normal images
                     elif fov_str[0:4] == 'none':
                         self.metadata['FOV'] = None
                         logging.info('\t{:>3}\t{:<18}\t{}'.format(
                             b, 'Field Of View:', 'None'))
+                    # for PES images
                     elif fov_str[0:8] == 'disp.pl.':
                         self.metadata['FOV'] = None
                         self.metadata['disp_plane'] = True
@@ -262,9 +292,7 @@ class DATImage:
                                 self.metadata['FOV'][1]))
                         except ValueError:
                             logging.error('FOV field tag: not known string detected: {}'.format(fov_str))
-                    logging.info('\t{:>3}\t{:<18}\t{}'.format('',
-                                                              'FOV cal. factor:',
-                                                              self.metadata['FOV cal. factor']))
+                    logging.info('\t{:>3}\t{:<18}\t{}'.format('','FOV cal. factor:',self.metadata['FOV cal. factor']))
                     offset = len(temp)+5
                     
                 # FOV rotation from LEEM presets
@@ -274,10 +302,13 @@ class DATImage:
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, 'Rotation:', self.metadata['Rotation'][0], self.metadata['Rotation'][1]))
                     offset = 4
+                # Spin up or down    
                 elif b == 240:
-                    self.metadata['Spin_UP-Down'] = img_header[position+1]
-                    logging.info('\t{:>3}\t{:<18}\t{:g}'.format(b, 'Spin_UP-Down:', self.metadata['Spin_UP-Down']))
+                    self.metadata['Spin up_down'] = img_header[position+1]
+                    logging.info('\t{:>3}\t{:<18}\t{:g}'.format(b, 'Spin up_down:', self.metadata['Spin up_down']))
                     offset = 2
+                
+                # Theta and Phi
                 elif b == 239:
                     self.metadata['Theta'] = \
                         [struct.unpack('<f', img_header[position+1:position+5])[0], 'degree']
@@ -289,7 +320,7 @@ class DATImage:
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         '', 'Phi:', self.metadata['Phi'][0],
                         self.metadata['Phi'][1]))
-                    offset = 8  
+                    offset = 8 
                     
                 else:
                     logging.error('ERROR: Unknown field tag {0} at '\
@@ -308,67 +339,20 @@ class DATImage:
             # Flip image to get the original orientation
             self.data = np.flipud(self.data)
             
-    def normalizeOnCCD(self, lCCD):
-        """Normalize LEEM image on CCD"""
-        if type(lCCD) is not LEEMImage:
-            raise TypeError('Image divisor not of type UKSoft')
-        if (self.metadata['width']!= lCCD.metadata['width'] or
-            self.metadata['height'] != lCCD.metadata['height']):
-            raise DimensionError('Dimensions of LEEM image and CCD image do not match')
-        correctedData = np.divide(self.data,lCCD.data)
-        correctedData /= correctedData.max()
-        return correctedData
-
     def filterInelasticBkg(self, sigma=15):
-        """Experimental function to remove the inelastic background in
+        '''
+        Experimental function to remove the inelastic background in
         LEED images. Works like a high-pass filter by subtracting the
-        gaussian filtered image."""
+        gaussian filtered image.
+        '''
         self.data = np.divide(self.data, self.data.max())
         dataGaussFiltered = scipy.ndimage.gaussian_filter(self.data, sigma)
         return self.data - dataGaussFiltered
-
-    def get_levels(self, data=None):
-        """Calculates good min/max values to obtain a good contrast.
-        Differentiate LEEM and LEED mode: For LEEM images only consider
-        the inner square (cutting off the edges usually appearing dark due to the
-        round MCP). For LEED consider the full image because the intensity
-        of the diffuse background is usually as low as the darkcounts.
-        Argument might be used if image data is corrected, which is not stored
-        as LEEMImage instance"""
-
-        def inner_square_size(length):
-            """ Determine size of inner square of a circle"""
-            offset = 5
-            return int(length/(2*np.sqrt(2)))-5
-
-        data = self.data if data is None else data
-
-        # Consider only the inner square for levels if image is a LEEM image
-        try:
-            if self.metadata['LEED'] is False:
-                nrows, ncols = data.shape[0], data.shape[1]
-                new_nrows = inner_square_size(nrows)
-                new_ncols = inner_square_size(ncols)
-                data = data[int(nrows/2)-new_nrows:int(nrows/2)+new_nrows,
-                            int(ncols/2)-new_ncols:int(ncols/2)+new_ncols]
-        except KeyError:
-            pass
-
-        data_histogram = np.histogram(data, bins=30)
-        minlevel = data_histogram[1][0]
-        nhotpixel = 10
-        # Ignore hotpixels when setting intensity
-        if data_histogram[0][-1] < nhotpixel and data_histogram[0][-2] < nhotpixel/2:
-            logging.debug('LEEMImage.get_levels: {} hotpixels detected'.format(
-                data_histogram[0][-1]))
-            # Find reverse index
-            rn_maxlevel = np.argmax(np.flipud(data_histogram[0]))
-            maxlevel = data_histogram[1][-rn_maxlevel]
-        else:
-            maxlevel = data_histogram[1][-2]
-        return minlevel, maxlevel
     
     def display_image(self):
+        '''
+        Display the image using matplotlib.
+        '''
         fig = plt.figure(frameon=False, 
         figsize=(3, 3*self.metadata['height']/self.metadata['width']),
                      dpi=self.metadata['width']/3)
@@ -389,12 +373,11 @@ if __name__ == '__main__':
     #logging.basicConfig(level=logging.WARNING)
     
     # for test purposes
-    im = DATImage(r'C:\Users\linzhu\Desktop\SWERIM\Sample Sigma Phase 1\Mirror 50um.dat')
+    im = DATImage('../testfiles/LEEM.dat')
     #im = DATImage('../testfiles/LEED.dat')
     #im = DATImage('../testfiles/PES.dat')
     #im = DATImage('../testfiles/PED.dat')    
-    #im.normalizeOnCCD()
-    #im.filterInelasticBkg()
-    #(fig, ax) = im.display_image()
+    im.filterInelasticBkg()
+    (fig, ax) = im.display_image()
 
 
