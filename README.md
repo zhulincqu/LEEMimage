@@ -1,2 +1,2 @@
 # LEEMimage
- MAXPEEM SPELEEM data IO
+ MAXPEEM SPELEEM DAT convertor
