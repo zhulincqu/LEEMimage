@@ -377,7 +377,7 @@ if __name__ == '__main__':
     #im = DATImage('../testfiles/LEED.dat')
     #im = DATImage('../testfiles/PES.dat')
     #im = DATImage('../testfiles/PED.dat')    
-    im.filterInelasticBkg()
-    (fig, ax) = im.display_image()
+    #im.filterInelasticBkg()
+    #(fig, ax) = im.display_image()
 
 
