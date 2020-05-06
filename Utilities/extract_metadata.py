@@ -2,7 +2,7 @@
 """
 Created on Thu Apr 23 16:52:03 2020
 
-@author: linzhu
+Author: linzhu
 """
 import os
 import sys 
