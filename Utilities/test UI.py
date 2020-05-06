@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr 29 23:07:25 2020
+User interface for Metadata Extractor.
 
-@author: linzhu
+Author: linzhu
 """
 
 from tkinter import filedialog
