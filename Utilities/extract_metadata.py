@@ -39,7 +39,7 @@ def extractMetaData(file, metadata, keys='all'):
                   metadata['timestamp'].strftime("%Y-%m-%d %H:%M:%S")))
         for key in keys:
             if type(metadata[key]) is int:
-                f.write('{:<18}\t{:g}\n'.format(key, metadata[key]))
+                f.write('{:<18}\t{:g}\n'.format(key+':', metadata[key]))
             elif type(metadata[key]) is list:
                 if len(metadata[key]) == 1:
                     f.write('{:<18}\t{:g}\n'.format(key+':', metadata[key]))
