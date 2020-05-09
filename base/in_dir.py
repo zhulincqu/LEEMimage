@@ -1,3 +1,4 @@
+import os
 
 @contextlib.contextmanager # decorator for context manager
 def in_dir(path):
