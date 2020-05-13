@@ -14,39 +14,50 @@ from DATImage import DATImage
 
 class Application(ttk.Frame):
     def __init__(self, master=None):
-        super().__init__(master, padding = (5,10), relief = 'sunken')
+        super().__init__(master, relief = 'sunken')
         self.master = master
         self.master.title("Metadata Extractor")
-        self.dirname = ""
         self.grid()
-        self.create_widgets()    
+        self.dirname = "Selected a folder..."
 
-    def create_widgets(self):
-        self.label_1 = ttk.Label(self,text = 'Select a folder:')
-        self.label_1.grid()
+        self.label_1 = ttk.Label(self,text = 'Folder:')
+        self.label_1.grid(row=0, column=0, sticky=W)
         
-        self.botton_1 = ttk.Button(self, text = "...", command=self.select_directory)
-        self.botton_1.grid()
+        self.label_2 = ttk.Label(self, text = '')
+        self.label_2.grid(row=1, column=1, sticky=W)
         
-        self.botton_2 = ttk.Button(self, text = "submit", command=self.extract_metadata)
-        self.botton_2.grid()
+        self.entry_1 = ttk.Entry(self, width = 50)
+        self.entry_1.insert(0, self.dirname)
+        self.entry_1.grid(row=0, column=1)
+        
+        self.botton_1 = ttk.Button(self, width=10, text = "...", command=self.select_directory)
+        self.botton_1.grid(row=0, column=2)
+        
+        self.botton_2 = ttk.Button(self, width=10, text = "Extract", command=self.extract_metadata)
+        self.botton_2.grid(row=1, column=2)
+        
+
         
     def select_directory(self):
         self.dirname = filedialog.askdirectory()
-        print(self.dirname)
+        self.entry_1.delete(0, END)
+        self.entry_1.insert(0,self.dirname)
     
     def extract_metadata(self):
-        keys = []
-        print('Extract metadata from the files in folder: {}'.format(self.dirname))
-        print('''Extract metadata from dat image file\nSave the metadata into a text file with same name''' )
+        keys = ['Camera Exposure','Average Images','Emission Curr.','MCH',
+                'Mitutoyo X', 'Mitutoyo Y','Objective','PCH','FOV','Rotation',
+                'Projective 3','Sample Temp.','Start Voltage']
+        self.label_2['text'] = 'Extracting metadata from .dat files in folder (subfolders):\n {}'.format(self.dirname)
+        
         # Get the list of all files in directory tree at given path
         listOfFiles = getListOfFiles(self.dirname)
         for file in listOfFiles:
             file_log = file[:-3]+'txt'
             im = DATImage(file)
-            extractMetaData(file_log, im.metadata)           
+            extractMetaData(file_log, im.metadata,keys)           
         
 
 root = Tk()
+root.title("Metadata Extractor")
 app = Application(master=root)
 app.mainloop()
