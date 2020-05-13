@@ -124,6 +124,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# dat image files from Uview
-.dat
-*.dat
