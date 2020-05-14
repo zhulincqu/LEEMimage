@@ -4,7 +4,7 @@ Created on Wed Apr 22 15:33:38 2020
 Image module for Elmitec .dat format image file 
 from MAXPEEM of MAX IV Laboratory
 
-Author: linzhu
+Author: Lin Zhu
 Email: lin.zhu@maxiv.lu.se
 """
 
@@ -17,17 +17,22 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 class DATImage:
-    '''
-    Import Elmitec dat format file containning image and metadata.
-    Return an intance of DATImage class, which has two important attributes:
-    1. data: 2D np.array saves the image.
-    2. metadata: a dictionary saves the all metadata.
-    
+    """Import Elmitec dat format file containning image and metadata.
+    Return an intance of DATImage class.
+
+    Attributes:
+        data(np.array): 2D np.array saves the image.
+        metadata(dict): A dictionary saves the all metadata.
+      
+    Methods:
+        filterInelasticBkg(self, sigma=15): Filter inelastic background.
+        display_image(self): Display the image.
+            
     Example:
-    im = DATImage('../testfiles/LEEM.dat')
-    im.data # show the 2D np.array image.
-    im.metadata # show the metadata in form of dictionary.
-    '''
+        im = DATImage('../testfiles/LEEM.dat')
+        im.data # show the 2D np.array image.
+        im.metadata # show the metadata in form of dictionary.
+    """
 
     def __init__(self, filename, *args, **key_args):
 
@@ -40,24 +45,38 @@ class DATImage:
         logging.info('---------------------------------------------------')
 
     def _load_file(self):
-        '''
-        Read metadata and image data from file.
-        '''
+        """Read metadata and image data from file.
+        """
 
         def convert_ad_timestamp(timestamp):
-            '''
-            Convert time to datetime object.
-            '''
+            """Convert date and time value to datetime object.
+            
+            Args:
+                timestamp(int): date and time value of this image.
+                this value represents the number of 100-nanosecond units since
+                the beginning of January 1, 1601.
+                
+            Returns:
+                datetime: timestamp in form of datetime type.
+            """
             epoch_start = datetime(year=1601, month=1, day=1)
             seconds_since_epoch = timestamp/10**7
             return epoch_start + timedelta(seconds=seconds_since_epoch)
 
         def read_field(header, current_position):
-            '''
-            Read data fields formatted
-            address-name(str)-unit(ASCII digit)-0-value(float).
-            '''
-            units_dict = ('', 'V', 'mA', 'A', '°C', ' K', 'mV', 'pA', 'nA', '\xb5A')
+            """Read data fields formatted by
+            "address-name(str)-unit(ASCII digit)-0-value(float)".
+            
+            Args: 
+                header(Byte): Image header contains metadata
+                current_position(int): Number of position for the metadata's 
+                    name.
+                    
+            returns:
+                tuple: (name, units_dict[unit_tag], val, offset) 
+            """
+            units_dict = ('', 'V', 'mA', 'A', '°C', ' K', 'mV', 'pA', 'nA', 
+                          '\xb5A')
             temp = header[current_position+1:].split(b'\x00')[0]
             name = temp[:-1].decode('cp1252')
             if sys.version_info[0] > 2:
@@ -70,9 +89,15 @@ class DATImage:
             return name, units_dict[unit_tag], val, offset
 
         def read_varian(header, current_position):
-            '''
-            Read data fields for varian pressure gauges.
-            '''
+            """
+            Read data fields for varian vacuum pressure gauges and return the 
+            metadata.
+            
+            Args: 
+                header(Byte): Image header contains metadata
+                current_position(int): Number of position for the metadata's 
+                    name.                
+            """
             temp_1 = header[current_position+1:].split(b'\x00')[0]
             temp_2 = header[current_position+1:].split(b'\x00')[1]
             str_1 = temp_1.decode('cp1252')  # Name
@@ -340,19 +365,27 @@ class DATImage:
             self.data = np.flipud(self.data)
             
     def filterInelasticBkg(self, sigma=15):
-        '''
-        Experimental function to remove the inelastic background in
+        """Experimental function to remove the inelastic background in
         LEED images. Works like a high-pass filter by subtracting the
         gaussian filtered image.
-        '''
+        
+        Args:
+            sigma(optional): GaussFilter parameter. Default is 15.
+        
+        Returns:
+            ndarray: Filtered 2D np.ndarray.
+        """
         self.data = np.divide(self.data, self.data.max())
         dataGaussFiltered = scipy.ndimage.gaussian_filter(self.data, sigma)
         return self.data - dataGaussFiltered
     
     def display_image(self):
-        '''
+        """
         Display the image using matplotlib.
-        '''
+        
+        Returns:
+            tuple(fig,ax)
+        """
         fig = plt.figure(frameon=False, 
         figsize=(3, 3*self.metadata['height']/self.metadata['width']),
                      dpi=self.metadata['width']/3)
@@ -370,14 +403,18 @@ class DATImage:
 if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
-    #logging.basicConfig(level=logging.WARNING)
+#    logging.basicConfig(level=logging.WARNING)
     
-    # for test purposes
-    im = DATImage('../testfiles/LEEM.dat')
-    #im = DATImage('../testfiles/LEED.dat')
-    #im = DATImage('../testfiles/PES.dat')
-    #im = DATImage('../testfiles/PED.dat')    
-    #im.filterInelasticBkg()
-    #(fig, ax) = im.display_image()
+    # for test the 'DATImage' class with different types of .dat files
+#    im = DATImage('../testfiles/LEEM.dat')
+#    im = DATImage('../testfiles/LEED.dat')
+#    im = DATImage('../testfiles/PES.dat')
+#    im = DATImage('../testfiles/PED.dat')  
+    
+    # test the 'filterInelasticBkg()' function
+#    filtred_im = im.filterInelasticBkg()
+    
+    # test the 'display_image()' function    
+#    (fig, ax) = im.display_image()
 
 
