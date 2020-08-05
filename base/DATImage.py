@@ -15,6 +15,7 @@ import sys
 import logging
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+import xarray as xr
 
 class DATImage:
     """Import Elmitec dat format file containning image and metadata.
@@ -23,10 +24,11 @@ class DATImage:
     Attributes:
         data(np.array): 2D np.array saves the image.
         metadata(dict): A dictionary saves the all metadata.
-      
+
     Methods:
         filterInelasticBkg(self, sigma=15): Filter inelastic background.
         display_image(self): Display the image.
+        image2xarray(self): convert image and metadata to xarray.
             
     Example:
         im = DATImage('../testfiles/LEEM.dat')
@@ -398,7 +400,25 @@ class DATImage:
                         aspect='auto')
         plt.show()
         return fig, ax
+
+    def image2xarray(self):
+        """Convert image and metadata to xarray and return xarray. The image 
+        in the xrarray 'values' attribute. Metadata is in the 'attrs' attribute.
         
+        
+        """
+        
+        im_dataarray = xr.DataArray(self.data, 
+                                  coords={'height': range(self.metadata['height']),
+                                          'width': range(self.metadata['width']),
+                                          'time': self.metadata['timestamp']},
+                                  dims=['height', 'width'],
+                                  name = "Intensity",
+                                  attrs = self.metadata
+                                  )
+        im_dataarray.attrs['unit'] = 'pixel'
+        
+        return im_dataarray
 
 if __name__ == '__main__':
 
@@ -406,7 +426,7 @@ if __name__ == '__main__':
 #    logging.basicConfig(level=logging.WARNING)
     
     # for test the 'DATImage' class with different types of .dat files
-#    im = DATImage('../testfiles/LEEM.dat')
+    im = DATImage('../testfiles/LEEM.dat')
 #    im = DATImage('../testfiles/LEED.dat')
 #    im = DATImage('../testfiles/PES.dat')
 #    im = DATImage('../testfiles/PED.dat')  
