@@ -18,5 +18,4 @@ current = path.abspath(path.dirname(__file__))
 
 setup(
     
-    )   
->>>>>>> origin/master
+    )
