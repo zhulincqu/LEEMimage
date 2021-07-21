@@ -1,4 +1,5 @@
 import datetime
+import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -36,7 +37,8 @@ def _convert_ad_timestamp(timestamp):
 
     Returns:
     -------
-    datetime: timestamp in form of datetime type.
+    datetime: timestamp 
+        time in form of datetime type.
     """
     seconds_since_epoch = timestamp / 10 ** 7
     return _EPOCH_START + timedelta(seconds=seconds_since_epoch)
@@ -59,27 +61,24 @@ class UvIm(DataArray):
         im.data # show the 2D np.array image.
         im.metadata # show the metadata in form of dictionary.
     """
+    __slots__ = (
+        "_filename"
+    )
 
     def __init__(
         self,
-        data: Any = dtypes.NA,
-        coords: Union[Sequence[Tuple], Mapping[Hashable, Any], None] = None,
-        dims: Union[Hashable, Sequence[Hashable], None] = None,
-        name: Hashable = None,
-        attrs: Mapping = None,
-        # internal parameters
-        indexes: Dict[Hashable, pd.Index] = None,
-        fastpath: bool = False,
-        *args, **key_args
+        filename = None
+        **key_args
     ):
-
-        self.filename = filename
+        self._filename = filename
         self.metadata = {}
         logging.info('---------------------------------------------------')
         logging.info('FILE:\t{}'.format(self.filename))
         logging.info('---------------------------------------------------')
         self._load_file() # open file and read the metadata.
         logging.info('---------------------------------------------------')
+        
+        super().__init__(**key_args)
 
     def _load_file(self):
         """Read metadata and image data from file.
