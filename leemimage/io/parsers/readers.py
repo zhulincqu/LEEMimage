@@ -49,6 +49,7 @@ def _convert_ad_timestamp(timestamp):
     seconds_since_epoch = timestamp / 10 ** 7
     return _EPOCH_START + timedelta(seconds=seconds_since_epoch)
 
+
 class FileReader():
     __slots__ = (
         "metadata",
@@ -146,7 +147,7 @@ class FileReader():
 
             # Pressure Gauges
             elif b in GAUGE_TAGS:
-                [pressure_gauge, unit, pressure, offset] = self._read_varian(self._position)
+                [pressure_gauge, unit, pressure, offset] = self._read_varian()
                 self.metadata[pressure_gauge] = [pressure, unit]
 
             # Image Title
@@ -271,7 +272,7 @@ class FileReader():
             [next(b_iter) for x in range(offset)]
             self._position += offset + 1
 
-    def _read_varian(self, current_position):
+    def _read_varian(self):
         """
         Read data fields for varian vacuum pressure gauges and return the
         metadata.
@@ -281,14 +282,14 @@ class FileReader():
             current_position(int): Number of position for the metadata's
                 name.
         """
-        temp_1 = self._header[current_position + 1:].split(b'\x00')[0]
-        temp_2 = self._header[current_position + 1:].split(b'\x00')[1]
+        temp_1 = self._header[self._position + 1:].split(b'\x00')[0]
+        temp_2 = self._header[self._position + 1:].split(b'\x00')[1]
         str_1 = temp_1.decode('cp1252')  # Name
         str_2 = temp_2.decode('cp1252')  # Unit
         val = struct.unpack('<f', self._header[self._position + len(temp_1) + len(temp_2)
                                                + 3: self._position + len(temp_1) + len(temp_2) + 7])[0]
         offset = len(temp_1) + len(temp_2) + 6  # length of entire field
-        logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(self._header[current_position],
+        logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(self._header[self._position],
                                                        str_1 + ':', val, str_2))
         return str_1, str_2, val, offset
 
@@ -364,6 +365,7 @@ class FileReader():
             self._read_imgheader()
 
             # Now read image data
+            # Seek relative to the file's end (2)
             f.seek(- 2 * self.metadata['height'] * self.metadata['width'], 2)
             self.data = np.fromfile(f, dtype=np.uint16, sep='')
             self.data = self.data.reshape(
