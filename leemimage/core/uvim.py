@@ -24,24 +24,7 @@ from datetime import datetime, timedelta
 from xarray.core.dataarray import DataArray
 
 
-_EPOCH_START = datetime(year=1601, month=1, day=1)
-def _convert_ad_timestamp(timestamp):
-    """Convert date and time value to datetime object.
 
-    Parameters
-    ----------
-    timestamp : int
-        date and time value of this image.
-        this value represents the number of 100-nanosecond units since
-        the beginning of January 1, 1601.
-
-    Returns:
-    -------
-    datetime: timestamp 
-        time in form of datetime type.
-    """
-    seconds_since_epoch = timestamp / 10 ** 7
-    return _EPOCH_START + timedelta(seconds=seconds_since_epoch)
 
 class UvIm(DataArray):
     """Import Elmitec dat format file containning image and metadata.
@@ -67,18 +50,10 @@ class UvIm(DataArray):
 
     def __init__(
         self,
-        filename = None
-        **key_args
+        *args,
+        **kargs
     ):
-        self._filename = filename
-        self.metadata = {}
-        logging.info('---------------------------------------------------')
-        logging.info('FILE:\t{}'.format(self.filename))
-        logging.info('---------------------------------------------------')
-        self._load_file() # open file and read the metadata.
-        logging.info('---------------------------------------------------')
-        
-        super().__init__(**key_args)
+        super().__init__(*args, **kargs)
 
     def _load_file(self):
         """Read metadata and image data from file.
@@ -87,16 +62,16 @@ class UvIm(DataArray):
         def read_field(header, current_position):
             """Read data fields formatted by
             "address-name(str)-unit(ASCII digit)-0-value(float)".
-            
-            Args: 
+
+            Args:
                 header(Byte): Image header contains metadata
-                current_position(int): Number of position for the metadata's 
+                current_position(int): Number of position for the metadata's
                     name.
-                    
+
             returns:
-                tuple: (name, units_dict[unit_tag], val, offset) 
+                tuple: (name, units_dict[unit_tag], val, offset)
             """
-            units_dict = ('', 'V', 'mA', 'A', '°C', ' K', 'mV', 'pA', 'nA', 
+            units_dict = ('', 'V', 'mA', 'A', '°C', ' K', 'mV', 'pA', 'nA',
                           '\xb5A')
             temp = header[current_positio n +1:].split(b'\x00')[0]
             name = temp[:-1].decode('cp1252')
@@ -111,13 +86,13 @@ class UvIm(DataArray):
 
         def read_varian(header, current_position):
             """
-            Read data fields for varian vacuum pressure gauges and return the 
+            Read data fields for varian vacuum pressure gauges and return the
             metadata.
-            
-            Args: 
+
+            Args:
                 header(Byte): Image header contains metadata
-                current_position(int): Number of position for the metadata's 
-                    name.                
+                current_position(int): Number of position for the metadata's
+                    name.
             """
             temp_1 = header[current_positio n +1:].split(b'\x00')[0]
             temp_2 = header[current_positio n +1:].split(b'\x00')[1]
@@ -154,7 +129,7 @@ class UvIm(DataArray):
             # read recipe if there is one
             if attachedRecipeSize:
                 self.metadata['recipe'] = f.read(attachedRecipeSize)
-                f.seek(12 8 -attachedRecipeSize, 1)
+                f.seek(128 -attachedRecipeSize, 1)
 
             # read first block of image header
             self.metadata['isize'] = struct.unpack('<h', f.read(2))[0]
@@ -185,14 +160,14 @@ class UvIm(DataArray):
             else:
                 f.seek(388 ,1)
                 img_header = f.read(self.versleemdata)
-                
+
             position = 0
-            
+
             #### DEBUG ####
             logging.debug('type(img_header) = {}'.format(type(img_header)))
             ###############
             b_iter = iter(img_header)
-            # data_fields with standard format in MAXPEEM 
+            # data_fields with standard format in MAXPEEM
             known_tags = [210 ,203 ,185 ,208 ,215 ,184 ,169 ,222 ,136 ,137 ,133 ,134 ,138,
                           135 ,132 ,143 ,144 ,206 ,172 ,147 ,171 ,145 ,146 ,148 ,168 ,130,
                           131 ,158 ,159 ,128 ,129 ,161 ,162 ,211 ,163 ,149 ,187 ,177 ,178,
@@ -202,25 +177,25 @@ class UvIm(DataArray):
                           205 ,204 ,188 ,189 ,175 ,162 ,170 ,142 ,207 ,219 ,39 ,38]
 
             # 235: COL, 236:Gauge 3, 237:PCH, 106:MCH
-            gauge_tags = [106, 235, 236, 237] 
+            gauge_tags = [106, 235, 236, 237]
             for b in b_iter:
                 if sys.version_info[0] < 3:
                     b = ord(b)
                 #### DEBUG ####
                 logging.debug('b = {}'.format(b))
                 ###############
-                
+
                 # stop when reaching end of header
                 if b == 255:
                     break
-                    
+
                 # Data fields with standard format
                 elif b in known_tags:
                     [fieldname, unit, value, offset] = read_field(img_header, position)
                     self.metadata[fieldname] = [value, unit]
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, fieldnam e +':', value, unit))
-                        
+
                 # Camera Exposure and average images
                 # Average Images = 0 : No Averaging
                 # Average Images = 255 : Sliding Averaging
@@ -231,13 +206,13 @@ class UvIm(DataArray):
                         b, 'Camera Exposure:',
                         self.metadata['Camera Exposure'][0],
                         self.metadata['Camera Exposure'][1]))
-                    
+
                     if self.metadata['Average Images'] == 0:
                         logging.info('\t{:>3}\t{:<18}\t{:d} {}'.format(
                             '', 'Average Images:',
                             self.metadata['Average Images'],
                             '\t=> No Averaging'))
-                        
+
                     elif self.metadata['Average Images'] == 255:
                         logging.info('\t{:>3}\t{:<18}\t{:d} {}'.format(
                             '', 'Average Images:',
@@ -253,13 +228,13 @@ class UvIm(DataArray):
                                          '', 'Average Images:',
                                          ord(self.metadata['Average Images'])))
                     offset = 6
-                    
+
                 # Pressure Gauges
                 elif b in gauge_tags:
                     [pressure_gauge, unit, pressure, offset] = \
                         read_varian(img_header, position)
                     self.metadata[pressure_gauge] = [pressure, unit]
-                    
+
                 # Image Title
                 elif b == 233:
                     temp = img_header[positio n +1:].split(b'\x00')[0]
@@ -267,14 +242,14 @@ class UvIm(DataArray):
                     logging.info('\t{:>3}\t{:<18}\t{}'.format(
                         b, 'Image Title:', self.metadata['Image Title']))
                     offset = len(temp) + 1
-                    
-                # MCP screen    
+
+                # MCP screen
                 elif b == 243:
                     self.metadata['MCPscreen'] = [struct.unpack('<f', img_header[positio n +1:positio n +5])[0], 'V']
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, 'MCPscreen:', self.metadata['MCPscreen'][0], self.metadata['MCPscreen'][1]))
                     offset = 4
-                    
+
                 # MCP channel plate
                 elif b == 244:
                     self.metadata['MCPchannelplate'] = [struct.unpack('<f', img_header[positio n +1:positio n +5])[0], 'V']
@@ -282,7 +257,7 @@ class UvIm(DataArray):
                         b, 'MCPchannelplate:', self.metadata['MCPchannelplate'][0],
                         self.metadata['MCPchannelplate'][1]))
                     offset = 4
-                    
+
                 # Micrometers(x,y)
                 elif b == 100:
                     self.metadata['Mitutoyo X'] = \
@@ -295,28 +270,28 @@ class UvIm(DataArray):
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         '', 'Mitutoyo Y:', self.metadata['Mitutoyo Y'][0],
                         self.metadata['Mitutoyo Y'][1]))
-                    offset = 8 
-                    
-                # Mirror state    
+                    offset = 8
+
+                # Mirror state
                 elif b == 242:
                     self.metadata['MirrorState'] = img_header[positio n +1]
                     logging.info('\t{:>3}\t{:<18}\t{:g}'.format(b, 'MirrorState:', self.metadata['MirrorState']))
                     offset = 2
-                    
+
                 # FOV
                 elif b == 110:
                     temp = img_header[positio n +1:].split(b'\x00')[0]
                     fov_str = temp.decode('cp1252')
                     self.metadata['FOV cal. factor'] = \
                         float(struct.unpack('<f', img_header[positio n +len(temp ) +2:positio n +len(temp ) +6])[0])
-                        
+
                     # for LEED images
                     if fov_str[0:4] == 'LEED':
                         self.metadata['LEED'] = True
                         self.metadata['FOV'] = None
                         logging.info('\t{:>3}\t{:<18}\t{}'.format(
                             b, 'Field Of View:', 'LEED'))
-                            
+
                     # for normal images
                     elif fov_str[0:4] == 'none':
                         self.metadata['FOV'] = None
@@ -327,7 +302,7 @@ class UvIm(DataArray):
                         self.metadata['FOV'] = None
                         self.metadata['disp_plane'] = True
                         logging.info('\t{:>3}\t{:<18}\t{}'.format(
-                            b, 'Field Of View:', 'disp.pl.'))                        
+                            b, 'Field Of View:', 'disp.pl.'))
                     else:
                         self.metadata['LEED'] = False
                         try:
@@ -340,7 +315,7 @@ class UvIm(DataArray):
                             logging.error('FOV field tag: not known string detected: {}'.format(fov_str))
                     logging.info('\t{:>3}\t{:<18}\t{}'.format('' ,'FOV cal. factor:' ,self.metadata['FOV cal. factor']))
                     offset = len(temp ) +5
-                    
+
                 # FOV rotation from LEEM presets
                 elif b == 113:
                     self.metadata['Rotation'] = \
@@ -348,12 +323,12 @@ class UvIm(DataArray):
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         b, 'Rotation:', self.metadata['Rotation'][0], self.metadata['Rotation'][1]))
                     offset = 4
-                # Spin up or down    
+                # Spin up or down
                 elif b == 240:
                     self.metadata['Spin up_down'] = img_header[positio n +1]
                     logging.info('\t{:>3}\t{:<18}\t{:g}'.format(b, 'Spin up_down:', self.metadata['Spin up_down']))
                     offset = 2
-                
+
                 # Theta and Phi
                 elif b == 239:
                     self.metadata['Theta'] = \
@@ -366,17 +341,17 @@ class UvIm(DataArray):
                     logging.info('\t{:>3}\t{:<18}\t{:g} {}'.format(
                         '', 'Phi:', self.metadata['Phi'][0],
                         self.metadata['Phi'][1]))
-                    offset = 8 
-                    
+                    offset = 8
+
                 else:
                     logging.error('ERROR: Unknown field tag {0} at '\
                             'position {1}. This and following data fields might '\
-                            'be misinterpreted!'.format(b, position))                    
+                            'be misinterpreted!'.format(b, position))
                 # skip byte number given by offset - depending on length of
                 # read data field, update position counter
                 [next(b_iter) for x in range(offset)]
                 position += offset + 1
-                
+
             # Now read image data
             f.seek(- 2 *self.metadata['height' ] *self.metadata['width'], 2)
             self.data = np.fromfile(f, dtype=np.uint16, sep='')
@@ -384,30 +359,30 @@ class UvIm(DataArray):
                 [self.metadata['height'], self.metadata['width']])
             # Flip image to get the original orientation
             self.data = np.flipud(self.data)
-            
+
     def filterInelasticBkg(self, sigma=15):
         """Experimental function to remove the inelastic background in
         LEED images. Works like a high-pass filter by subtracting the
         gaussian filtered image.
-        
+
         Args:
             sigma(optional): GaussFilter parameter. Default is 15.
-        
+
         Returns:
             ndarray: Filtered 2D np.ndarray.
         """
         self.data = np.divide(self.data, self.data.max())
         dataGaussFiltered = scipy.ndimage.gaussian_filter(self.data, sigma)
         return self.data - dataGaussFiltered
-    
+
     def display_image(self):
         """
         Display the image using matplotlib.
-        
+
         Returns:
             tuple(fig,ax)
         """
-        fig = plt.figure(frameon=False, 
+        fig = plt.figure(frameon=False,
         figsize=(3, 3* self.metadata['height'] / self.metadata['width']),
                          dpi=self.metadata['width'] / 3)
         ax = plt.Axes(fig, [0., 0., 1., 1.])
@@ -421,10 +396,10 @@ class UvIm(DataArray):
         return fig, ax
 
     def image2xarray(self):
-        """Convert image and metadata to xarray and return xarray. The image 
+        """Convert image and metadata to xarray and return xarray. The image
         in the xrarray 'values' attribute. Metadata is in the 'attrs' attribute.
-        
-        
+
+
         """
 
         im_dataarray = xr.DataArray(self.data,
